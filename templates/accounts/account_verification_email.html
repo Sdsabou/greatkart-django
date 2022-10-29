@@ -1,0 +1,10 @@
+{% autoescape off %}
+
+Hi {{user.first_name}},
+
+Please click on below link to confir your Registration
+http://{{domain}}{% url 'activate' uldb64=uld token=token %}
+
+if you think it's not you , please ignore this email.
+
+{% endautoescape %}
