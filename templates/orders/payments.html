@@ -103,7 +103,8 @@
 			<p class="text-center mb-3">
 				<img src="{% static './images/misc/payments.png' %}" height="26">
 			</p>
-			<a href="{% url 'checkout' %}" class="btn btn-primary btn-block"> Make Payment </a>
+			<div id="paypal-button-container"></div>
+			<!-PayPal button will load -->
 		</div> <!-- card-body.// -->
 		</div> <!-- card.// -->
 
@@ -116,5 +117,85 @@
 </div> <!-- container .//  -->
 </section>
 <!-- ========================= SECTION CONTENT END// ========================= -->
+
+<script>
+
+	function getCookie(name) {
+	    let cookieValue = null;
+	    if (document.cookie && document.cookie !== '') {
+	        const cookies = document.cookie.split(';');
+	        for (let i = 0; i < cookies.length; i++) {
+	            const cookie = cookies[i].trim();
+	            // Does this cookie string begin with the name we want?
+	            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+	                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+	                break;
+	            }
+	        }
+	    }
+	    return cookieValue;
+	}
+
+
+	var amount = "{{ grand_total }}"
+	var url = "{% url 'payments' %}"
+	var csrftoken = getCookie('csrftoken');
+	var orderID = "{{order.order_number}}"
+	var payment_method = 'PayPal'
+	var redirect_url = "{% url 'order_complete' %}"
+
+	paypal.Buttons({
+			style: {
+				color: 'blue',
+				shape: 'rect',
+				label: 'pay',
+				height: 40
+			},
+	})
+
+		 paypal.Buttons({
+			 // Sets up the transaction when a payment button is clicked
+			 createOrder: (data, actions) => {
+				 return actions.order.create({
+					 purchase_units: [{
+						 amount: {
+							 value: amount, // Can also reference a variable or function
+						 }
+					 }]
+				 });
+			 },
+			 // Finalize the transaction after payer approval
+			 onApprove: (data, actions) => {
+				 return actions.order.capture().then(function(orderData) {
+					 // Successful capture! For dev/demo purposes:
+					 console.log('Capture result', orderData, JSON.stringify(orderData, null, 2));
+					 sendData();
+					 function sendData(){
+						 fetch(url, {
+							 method : "POST",
+							 headers: {
+								 "Content-type": "/json",
+								 "X-CSRFToken": csrftoken,
+							 },
+							 body: JSON.stringify({
+								 orderID: orderID,
+								 transID: orderData.id,
+								 payment_method: payment_method,
+								 status: orderData.status,
+							 }),
+						 })
+						 .then((response) => response.json())
+						 .then((data) => {
+							 window.location.href = redirect_url + '?order_number='+data.order_number+'&payment_id='+data.transID;
+						 });
+					 }
+					 // When ready to go live, remove the alert and show a success message within this page. For example:
+					 // const element = document.getElementById('paypal-button-container');
+					 // element.innerHTML = '<h3>Thank you for your payment!</h3>';
+					 // Or go to another URL:  actions.redirect('thank_you.html');
+				 });
+			 }
+		 }).render('#paypal-button-container');
+	 </script>
 
 {% endblock %}
